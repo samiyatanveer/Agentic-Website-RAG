@@ -1,0 +1,105 @@
+/**
+ * Design system CSS variables — dark blue developer/AI theme.
+ * Import this file first in App.css.
+ *
+ * Inspired by VS Code + Claude typography + modern AI chat interfaces.
+ */
+
+:root {
+  /* ── Background Layers ─────────────────────────────────────────── */
+  --bg-primary:    #0a0f1a;   /* Deepest background — page base */
+  --bg-secondary:  #0f172a;   /* App shell / panels */
+  --bg-tertiary:   #1e293b;   /* Cards, sidebars */
+  --bg-elevated:   #263348;   /* Hover states, active panels */
+
+  /* ── Surfaces ──────────────────────────────────────────────────── */
+  --surface:       #1e293b;   /* Default card/panel surface */
+  --surface-hover: #263348;   /* Hovered surface */
+  --surface-active:#2d3f5c;   /* Active/selected surface */
+  --surface-input: #131c2e;   /* Input fields */
+
+  /* ── Borders ───────────────────────────────────────────────────── */
+  --border:        rgba(148, 163, 184, 0.12);  /* Subtle borders */
+  --border-strong: rgba(148, 163, 184, 0.24);  /* Prominent borders */
+  --border-focus:  #38bdf8;                    /* Focus ring */
+
+  /* ── Text ──────────────────────────────────────────────────────── */
+  --text-primary:   #f1f5f9;  /* Main content */
+  --text-secondary: #94a3b8;  /* Labels, metadata */
+  --text-muted:     #475569;  /* Placeholders, disabled */
+  --text-inverse:   #0a0f1a;  /* On accent backgrounds */
+
+  /* ── Accent (Sky blue — developer/AI feel) ─────────────────────── */
+  --accent:         #38bdf8;
+  --accent-hover:   #7dd3fc;
+  --accent-dim:     rgba(56, 189, 248, 0.12);
+  --accent-dim-hover: rgba(56, 189, 248, 0.2);
+
+  /* ── Semantic Colors ───────────────────────────────────────────── */
+  --success:        #22d3a5;
+  --success-dim:    rgba(34, 211, 165, 0.12);
+  --warning:        #fb923c;
+  --warning-dim:    rgba(251, 146, 60, 0.12);
+  --error:          #f87171;
+  --error-dim:      rgba(248, 113, 113, 0.12);
+  --info:           #818cf8;
+  --info-dim:       rgba(129, 140, 248, 0.12);
+
+  /* ── Typography ────────────────────────────────────────────────── */
+  --font-sans:  'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono:  'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+
+  --text-xs:   0.75rem;    /* 12px */
+  --text-sm:   0.875rem;   /* 14px */
+  --text-base: 1rem;       /* 16px */
+  --text-lg:   1.125rem;   /* 18px */
+  --text-xl:   1.25rem;    /* 20px */
+  --text-2xl:  1.5rem;     /* 24px */
+  --text-3xl:  1.875rem;   /* 30px */
+
+  --weight-normal:   400;
+  --weight-medium:   500;
+  --weight-semibold: 600;
+  --weight-bold:     700;
+
+  --leading-tight:  1.25;
+  --leading-normal: 1.5;
+  --leading-relaxed:1.75;
+
+  /* ── Spacing ───────────────────────────────────────────────────── */
+  --space-1:  0.25rem;   /*  4px */
+  --space-2:  0.5rem;    /*  8px */
+  --space-3:  0.75rem;   /* 12px */
+  --space-4:  1rem;      /* 16px */
+  --space-5:  1.25rem;   /* 20px */
+  --space-6:  1.5rem;    /* 24px */
+  --space-8:  2rem;      /* 32px */
+  --space-10: 2.5rem;    /* 40px */
+  --space-12: 3rem;      /* 48px */
+  --space-16: 4rem;      /* 64px */
+
+  /* ── Radii ─────────────────────────────────────────────────────── */
+  --radius-sm: 4px;
+  --radius:    8px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-full: 9999px;
+
+  /* ── Shadows ───────────────────────────────────────────────────── */
+  --shadow-sm:  0 1px 2px rgba(0,0,0,0.4);
+  --shadow:     0 4px 12px rgba(0,0,0,0.5);
+  --shadow-lg:  0 8px 32px rgba(0,0,0,0.6);
+  --shadow-accent: 0 0 20px rgba(56, 189, 248, 0.15);
+
+  /* ── Transitions ───────────────────────────────────────────────── */
+  --transition-fast:   120ms ease;
+  --transition:        200ms ease;
+  --transition-slow:   350ms ease;
+
+  /* ── Layout ────────────────────────────────────────────────────── */
+  --sidebar-width:      280px;
+  --topbar-height:      56px;
+  --chat-max-width:     760px;
+  --input-area-height:  80px;
+}

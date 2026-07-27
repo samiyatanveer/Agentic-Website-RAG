@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+*/node_modules/
+
+# Environment files (never commit secrets)
+.env
+backend/.env
+frontend/.env
+
+# Database files
+data/
+*.db
+*.db-shm
+*.db-wal
+
+# ChromaDB persistence
+chroma/
+
+# Logs
+logs/
+*.log
+
+# Build output
+dist/
+build/
+frontend/dist/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Temporary files
+*.tmp
+*.temp

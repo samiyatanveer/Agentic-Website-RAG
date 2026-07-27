@@ -1,0 +1,14 @@
+{
+  "name": "agentic-website-rag",
+  "version": "1.0.0",
+  "description": "Website Scraper + Local LLM RAG Chatbot",
+  "private": true,
+  "scripts": {
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "install:all": "cd backend && npm install && cd ../frontend && npm install",
+    "setup-db": "cd backend && npm run setup-db",
+    "test:ollama": "cd backend && npm run test-ollama",
+    "test:chroma": "cd backend && npm run test-chroma"
+  }
+}

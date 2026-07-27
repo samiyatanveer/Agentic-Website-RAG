@@ -1,0 +1,175 @@
+/**
+ * App.css — Global styles and layout skeleton.
+ * Imports the design token variables and sets up the base styles.
+ */
+
+@import './variables.css';
+
+/* ── Reset & Base ────────────────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  font-weight: var(--weight-normal);
+  line-height: var(--leading-normal);
+  color: var(--text-primary);
+  background-color: var(--bg-primary);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Typography ──────────────────────────────────────────────────────────── */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-tight);
+  color: var(--text-primary);
+}
+
+p { line-height: var(--leading-relaxed); }
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+a:hover { color: var(--accent-hover); }
+
+code, kbd, pre, samp {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+
+/* ── Scrollbar (Webkit) ──────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: var(--radius-full);
+}
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+/* ── Selection ───────────────────────────────────────────────────────────── */
+::selection {
+  background-color: var(--accent-dim);
+  color: var(--text-primary);
+}
+
+/* ── Focus Ring ──────────────────────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
+/* ── App Layout Shell ────────────────────────────────────────────────────── */
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background-color: var(--bg-secondary);
+}
+
+.app-body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  height: calc(100vh - var(--topbar-height));
+}
+
+/* ── Phase 1 placeholder page ────────────────────────────────────────────── */
+.phase1-landing {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  gap: var(--space-6);
+  padding: var(--space-8);
+  text-align: center;
+}
+
+.phase1-logo {
+  width: 64px;
+  height: 64px;
+}
+
+.phase1-title {
+  font-size: var(--text-3xl);
+  font-weight: var(--weight-bold);
+  background: linear-gradient(135deg, var(--accent), var(--info));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.phase1-subtitle {
+  font-size: var(--text-lg);
+  color: var(--text-secondary);
+  max-width: 480px;
+}
+
+.phase1-status {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: 100%;
+  max-width: 400px;
+}
+
+.status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: var(--text-sm);
+}
+
+.status-label { color: var(--text-secondary); }
+
+.status-badge {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-full);
+}
+
+.status-badge.ok {
+  background: var(--success-dim);
+  color: var(--success);
+}
+
+.status-badge.checking {
+  background: var(--warning-dim);
+  color: var(--warning);
+}
+
+.status-badge.error {
+  background: var(--error-dim);
+  color: var(--error);
+}
+
+.phase1-note {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
