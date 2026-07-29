@@ -40,6 +40,7 @@ export async function createConversation(websiteId, { userId = null, title = nul
   }
 
   return getConversationById(id);
+  
 }
 
 // ─── Read ─────────────────────────────────────────────────────────────────────
@@ -53,7 +54,16 @@ export async function getConversationById(id) {
   const db = await getDatabase();
   return db.get('SELECT * FROM conversations WHERE id = ?', [id]);
 }
-
+/**
+ * Fetch a conversation by ID.
+ * Alias used by chat controller.
+ *
+ * @param {string} id
+ * @returns {Promise<object|null>}
+ */
+export async function getConversation(id) {
+  return getConversationById(id);
+}
 /**
  * List all conversations for a given website, newest first.
  * @param {string} websiteId

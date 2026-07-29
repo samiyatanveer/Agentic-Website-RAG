@@ -21,10 +21,10 @@ const chromaClient = axios.create({
  */
 export async function checkChromaHealth() {
   try {
-    const response = await chromaClient.get('/api/v1', { timeout: 5000 });
+    const response = await chromaClient.get('/api/v2/heartbeat', { timeout: 5000 });
     return {
       healthy: true,
-      version: response.data?.nanosecond_heartbeat ? 'running' : response.data?.version ?? 'unknown',
+      version: response.data?.nanosecond_heartbeat ? 'running' : 'running',
     };
   } catch (error) {
     return {

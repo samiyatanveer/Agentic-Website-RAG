@@ -212,7 +212,86 @@ export async function removeWebsiteEmbeddings(websiteId) {
   await chunkDbService.deleteChunksByWebsite(websiteId);
   logger.info(`[Pipeline] Removed all embeddings for websiteId=${websiteId}`);
 }
+/**
+ * Force re-index all existing pages of a website.
+ *
+ * This is useful when:
+ * - the website is already scraped
+ * - SQLite pages already exist
+ * - ChromaDB was reset or a new collection was created
+ */
+export async function forceReindexWebsite(websiteId) {
+  logger.info(
+    `[Pipeline] Force re-index started for websiteId=${websiteId}`
+  );
 
+  // Check that the embedding model is available
+  const modelReady = await isEmbedModelAvailable();
+
+  if (!modelReady) {
+    throw createError(
+      ERROR_CODES.OLLAMA_OFFLINE,
+      `Embedding model '${env.OLLAMA_EMBED_MODEL}' is not available. ` +
+      `Run: ollama pull ${env.OLLAMA_EMBED_MODEL}`,
+      503
+    );
+  }
+
+  // Get all already-scraped pages from SQLite
+  const pages = await pageService.getPagesByWebsite(websiteId);
+
+  if (pages.length === 0) {
+    throw createError(
+      ERROR_CODES.NOT_FOUND,
+      `No scraped pages found for websiteId=${websiteId}`,
+      404
+    );
+  }
+
+  logger.info(
+    `[Pipeline] Found ${pages.length} existing pages. Re-indexing...`
+  );
+
+  let totalChunksCreated = 0;
+  let totalChunksEmbedded = 0;
+  let errorCount = 0;
+
+  for (const page of pages) {
+    try {
+      const result = await embedPage(page);
+
+      totalChunksCreated += result.chunksCreated;
+      totalChunksEmbedded += result.chunksEmbedded;
+
+      logger.info(
+        `[Pipeline] Re-indexed page: ${page.url} ` +
+        `(${result.chunksEmbedded} chunks)`
+      );
+    } catch (err) {
+      errorCount++;
+
+      logger.error(
+        `[Pipeline] Failed to re-index ${page.url}: ${err.message}`
+      );
+    }
+  }
+
+  logger.info(
+    `[Pipeline] Force re-index complete — ` +
+    `${pages.length} pages, ` +
+    `${totalChunksCreated} chunks created, ` +
+    `${totalChunksEmbedded} vectors stored, ` +
+    `${errorCount} errors`
+  );
+
+  return {
+    websiteId,
+    pagesProcessed: pages.length,
+    chunksCreated: totalChunksCreated,
+    chunksEmbedded: totalChunksEmbedded,
+    errorCount,
+  };
+}
 /**
  * @typedef {Object} PipelineResult
  * @property {string} websiteId

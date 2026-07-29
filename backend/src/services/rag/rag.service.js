@@ -3,151 +3,604 @@
  * RAG pipeline orchestrator.
  *
  * Flow:
- *   question → embed query → ChromaDB retrieval → build prompt → Ollama → save + return
- *
- * SRP: Coordinates the full RAG cycle for one chat turn.
- *      Delegates embedding to pipeline.service, generation to ollama.service,
- *      persistence to conversation/message services.
+ * question → embed query → ChromaDB retrieval → build prompt
+ * → Ollama → save + return
  */
 
-import { searchSimilar }                     from '../embeddings/pipeline.service.js';
-import { generate }                          from '../llm/ollama.service.js';
-import { buildRagPrompt, buildFallbackPrompt } from './prompt.service.js';
-import * as conversationService              from '../database/conversation.service.js';
-import * as messageService                   from '../database/message.service.js';
-import { createError }                       from '../../utils/errorHandler.js';
-import { ERROR_CODES }                       from '../../config/constants.js';
-import logger                                from '../../utils/logger.js';
-import env                                   from '../../config/env.js';
+import { searchSimilar } from '../embeddings/pipeline.service.js';
+import { generate } from '../llm/ollama.service.js';
+import {
+  buildRagPrompt,
+  buildFallbackPrompt,
+} from './prompt.service.js';
 
-// ─── Main entry point ─────────────────────────────────────────────────────────
+import * as conversationService from '../database/conversation.service.js';
+import * as messageService from '../database/message.service.js';
+
+import { createError } from '../../utils/errorHandler.js';
+import { ERROR_CODES } from '../../config/constants.js';
+import logger from '../../utils/logger.js';
+import env from '../../config/env.js';
+
+// ─── Main RAG function ───────────────────────────────────────────────────────
 
 /**
- * Run a full RAG cycle for one user message.
+ * Run one complete RAG chat cycle.
  *
  * @param {{
  *   websiteId: string,
  *   message: string,
- *   conversationId?: string,
+ *   conversationId?: string
  * }} params
- * @returns {Promise<RagResponse>}
+ *
+ * @returns {Promise<object>}
  */
-export async function chat({ websiteId, message, conversationId }) {
+export async function chat({
+  websiteId,
+  message,
+  conversationId,
+}) {
+  // ─── Validate input ────────────────────────────────────────────────────────
+
   if (!websiteId || !message?.trim()) {
-    throw createError(ERROR_CODES.INVALID_INPUT, 'websiteId and message are required', 400);
+    throw createError(
+      ERROR_CODES.INVALID_INPUT,
+      'websiteId and message are required',
+      400
+    );
   }
 
-  logger.info('[RAG] Chat request', { websiteId, conversationId, messageLen: message.length });
-
-  // 1. Load or create conversation
-  let conversation;
-  if (conversationId) {
-    conversation = await conversationService.getConversation(conversationId);
-    if (!conversation) {
-      throw createError(ERROR_CODES.NOT_FOUND, `Conversation ${conversationId} not found`, 404);
+  logger.info(
+    '[RAG] Chat request',
+    {
+      websiteId,
+      conversationId,
+      messageLen: message.length,
     }
-  } else {
-    conversation = await conversationService.createConversation(websiteId);
-    logger.debug('[RAG] Created new conversation', { conversationId: conversation.id });
-  }
-
-  // 2. Load conversation history for context
-  const history = await messageService.getRecentMessages(
-    conversation.id,
-    env.RAG_MAX_HISTORY ?? 10
   );
 
-  // 3. Retrieve relevant chunks from ChromaDB
+  console.log('\n========== RAG CHAT START ==========');
+
+  console.log(
+    'Website ID:',
+    websiteId
+  );
+
+  console.log(
+    'Conversation ID:',
+    conversationId ?? 'NEW'
+  );
+
+  console.log(
+    'Question:',
+    message
+  );
+
+  console.log(
+    '====================================\n'
+  );
+
+  // ─── 1. Load or create conversation ───────────────────────────────────────
+
+  let conversation;
+
+  if (conversationId) {
+    console.log(
+      '[RAG] Loading existing conversation...'
+    );
+
+    conversation =
+      await conversationService.getConversation(
+        conversationId
+      );
+
+    if (!conversation) {
+      throw createError(
+        ERROR_CODES.NOT_FOUND,
+        `Conversation ${conversationId} not found`,
+        404
+      );
+    }
+
+    console.log(
+      '[RAG] Existing conversation loaded:',
+      conversation.id
+    );
+
+  } else {
+    console.log(
+      '[RAG] Creating new conversation...'
+    );
+
+    conversation =
+      await conversationService.createConversation(
+        websiteId
+      );
+
+    logger.debug(
+      '[RAG] Created new conversation',
+      {
+        conversationId:
+          conversation.id,
+      }
+    );
+
+    console.log(
+      '[RAG] New conversation created:',
+      conversation.id
+    );
+  }
+
+  // ─── 2. Load chat history ─────────────────────────────────────────────────
+
+  console.log(
+    '[RAG] Loading conversation history...'
+  );
+
+  const history =
+    await messageService.getRecentMessages(
+      conversation.id,
+      env.RAG_MAX_HISTORY ?? 10
+    );
+
+  console.log(
+    '[RAG] History messages:',
+    history.length
+  );
+
+  // ─── 3. Retrieve relevant ChromaDB chunks ─────────────────────────────────
+
   let results = [];
-  let confidence = 'none';
+
+  let confidence =
+    'none';
 
   try {
-    results = await searchSimilar(message, {
-      websiteId,
-      nResults:  env.RAG_N_RESULTS  ?? 5,
-      threshold: env.RAG_SIMILARITY_THRESHOLD ?? 0.6,
-    });
+    console.log(
+      '\n========== RAG RETRIEVAL START =========='
+    );
+
+    console.log(
+      'Calling searchSimilar()...'
+    );
+
+    console.log(
+      'Question:',
+      message
+    );
+
+    console.log(
+      'Website filter:',
+      websiteId
+    );
+
+    console.log(
+      'Requested results:',
+      env.RAG_N_RESULTS ?? 5
+    );
+
+    console.log(
+      'Similarity threshold:',
+      env.RAG_SIMILARITY_THRESHOLD ?? 0.6
+    );
+
+    console.log(
+      '=========================================\n'
+    );
+
+    // First retrieval attempt
+    results =
+      await searchSimilar(
+        message,
+        {
+          websiteId,
+
+          nResults:
+            env.RAG_N_RESULTS ?? 5,
+
+          threshold:
+            env.RAG_SIMILARITY_THRESHOLD ??
+            0.6,
+        }
+      );
+
+    console.log(
+      '[RAG] First retrieval completed.'
+    );
+
+    console.log(
+      '[RAG] Results found:',
+      results.length
+    );
 
     if (results.length > 0) {
-      confidence = results[0].score >= 0.75 ? 'high' : 'medium';
+      confidence =
+        results[0].score >= 0.75
+          ? 'high'
+          : 'medium';
+
+      console.log(
+        '[RAG] Best score:',
+        results[0].score
+      );
+
+      console.log(
+        '[RAG] Confidence:',
+        confidence
+      );
     }
 
-    // Fallback: if no results pass threshold, try without threshold
+    // Second retrieval attempt without threshold
     if (results.length === 0) {
-      results = await searchSimilar(message, {
-        websiteId,
-        nResults:  3,
-        threshold: 0,  // no threshold — get closest even if low confidence
-      });
-      if (results.length > 0) confidence = 'low';
+      console.log(
+        '\n[RAG] No chunks passed threshold.'
+      );
+
+      console.log(
+        '[RAG] Trying again with threshold = 0...'
+      );
+
+      results =
+        await searchSimilar(
+          message,
+          {
+            websiteId,
+
+            nResults:
+              3,
+
+            threshold:
+              0,
+          }
+        );
+
+      console.log(
+        '[RAG] Fallback retrieval completed.'
+      );
+
+      console.log(
+        '[RAG] Fallback results:',
+        results.length
+      );
+
+      if (results.length > 0) {
+        confidence =
+          'low';
+      }
     }
 
-    logger.debug('[RAG] Retrieved chunks', { count: results.length, confidence });
+    logger.debug(
+      '[RAG] Retrieved chunks',
+      {
+        count:
+          results.length,
+
+        confidence,
+      }
+    );
+
+    console.log(
+      '\n========== RAG RETRIEVAL COMPLETE =========='
+    );
+
+    console.log(
+      'Final chunk count:',
+      results.length
+    );
+
+    console.log(
+      'Confidence:',
+      confidence
+    );
+
+    console.log(
+      '============================================\n'
+    );
+
   } catch (err) {
-    // ChromaDB or Ollama embed error — degrade gracefully
-    logger.warn('[RAG] Retrieval failed, using fallback prompt', { error: err.message });
+
+    console.error(
+      '\n========== RAG RETRIEVAL ERROR =========='
+    );
+
+    console.error(
+      'Error name:',
+      err.name
+    );
+
+    console.error(
+      'Error message:',
+      err.message
+    );
+
+    console.error(
+      'Error code:',
+      err.code
+    );
+
+    console.error(
+      'HTTP status:',
+      err.response?.status
+    );
+
+    console.error(
+      'Request URL:',
+      err.config?.url
+    );
+
+    console.error(
+      'Response data:',
+      JSON.stringify(
+        err.response?.data,
+        null,
+        2
+      )
+    );
+
+    console.error(
+      'Full error:',
+      err
+    );
+
+    console.error(
+      '==========================================\n'
+    );
+
+    logger.warn(
+      '[RAG] Retrieval failed, using fallback prompt',
+      {
+        error:
+          err.message,
+      }
+    );
+
+    results = [];
   }
 
-  // 4. Build the prompt
+  // ─── 4. Build prompt ───────────────────────────────────────────────────────
+
   let prompt;
-  let sourceUrls = [];
+
+  let sourceUrls =
+    [];
 
   if (results.length === 0) {
-    prompt = buildFallbackPrompt(message);
-    confidence = 'none';
+
+    console.log(
+      '[RAG] No retrieved chunks.'
+    );
+
+    console.log(
+      '[RAG] Using fallback prompt.'
+    );
+
+    prompt =
+      buildFallbackPrompt(
+        message
+      );
+
+    confidence =
+      'none';
+
   } else {
-    const built  = buildRagPrompt(message, results, history);
-    prompt       = built.prompt;
-    sourceUrls   = built.sourceUrls;
+
+    console.log(
+      '[RAG] Building RAG prompt using',
+      results.length,
+      'chunks.'
+    );
+
+    const built =
+      buildRagPrompt(
+        message,
+        results,
+        history
+      );
+
+    prompt =
+      built.prompt;
+
+    sourceUrls =
+      built.sourceUrls;
+
+    console.log(
+      '[RAG] RAG prompt created.'
+    );
   }
 
-  // 5. Call Ollama
+  // ─── 5. Generate answer with Ollama ───────────────────────────────────────
+
+  console.log(
+    '\n========== OLLAMA GENERATION =========='
+  );
+
+  console.log(
+    'Model:',
+    env.OLLAMA_MODEL
+  );
+
+  console.log(
+    'Generating answer...'
+  );
+
   let answer;
+
   try {
-    answer = await generate(prompt);
+
+    answer =
+      await generate(
+        prompt
+      );
+
   } catch (err) {
-    if (err.code === ERROR_CODES.OLLAMA_OFFLINE) throw err; // propagate — client must know
-    throw createError(ERROR_CODES.UNKNOWN, `LLM generation failed: ${err.message}`, 500);
+
+    console.error(
+      '[RAG] Ollama generation failed:',
+      err.message
+    );
+
+    if (
+      err.code ===
+      ERROR_CODES.OLLAMA_OFFLINE
+    ) {
+      throw err;
+    }
+
+    throw createError(
+      ERROR_CODES.UNKNOWN,
+      `LLM generation failed: ${err.message}`,
+      500
+    );
   }
 
-  // 6. Persist user message + assistant response
-  await messageService.createMessage(conversation.id, 'user',      message);
-  await messageService.createMessage(conversation.id, 'assistant', answer);
+  console.log(
+    'Answer generated.'
+  );
 
-  // 7. Build sources array for the response
-  const sources = results.map((r) => ({
-    url:        r.metadata?.pageUrl   ?? null,
-    title:      r.metadata?.pageTitle ?? null,
-    chunkIndex: r.metadata?.chunkIndex ?? null,
-    score:      Math.round(r.score * 100) / 100,
-  }));
+  console.log(
+    'Answer length:',
+    answer.length
+  );
 
-  logger.info('[RAG] Chat complete', {
-    conversationId: conversation.id,
-    confidence,
-    sourceCount: sources.length,
-    answerLen: answer.length,
-  });
+  console.log(
+    '=======================================\n'
+  );
+
+  // ─── 6. Save user and assistant messages ──────────────────────────────────
+
+  console.log(
+    '[RAG] Saving chat messages...'
+  );
+
+  await messageService.createMessage(
+    conversation.id,
+    'user',
+    message
+  );
+
+  await messageService.createMessage(
+    conversation.id,
+    'assistant',
+    answer
+  );
+
+  console.log(
+    '[RAG] Messages saved successfully.'
+  );
+
+  // ─── 7. Build source list ─────────────────────────────────────────────────
+
+  const sources =
+    results.map(
+      (result) => ({
+        url:
+          result.metadata?.pageUrl ??
+          null,
+
+        title:
+          result.metadata?.pageTitle ??
+          null,
+
+        chunkIndex:
+          result.metadata?.chunkIndex ??
+          null,
+
+        score:
+          Math.round(
+            result.score * 100
+          ) / 100,
+      })
+    );
+
+  logger.info(
+    '[RAG] Chat complete',
+    {
+      conversationId:
+        conversation.id,
+
+      confidence,
+
+      sourceCount:
+        sources.length,
+
+      answerLen:
+        answer.length,
+    }
+  );
+
+  console.log(
+    '\n========== RAG CHAT COMPLETE =========='
+  );
+
+  console.log(
+    'Conversation:',
+    conversation.id
+  );
+
+  console.log(
+    'Chunks:',
+    results.length
+  );
+
+  console.log(
+    'Confidence:',
+    confidence
+  );
+
+  console.log(
+    'Sources:',
+    sources.length
+  );
+
+  console.log(
+    '=======================================\n'
+  );
 
   return {
-    conversationId: conversation.id,
+    conversationId:
+      conversation.id,
+
     websiteId,
+
     answer,
+
     sources,
+
     confidence,
+
     metadata: {
-      chunksRetrieved: results.length,
-      model: env.OLLAMA_MODEL,
+      chunksRetrieved:
+        results.length,
+
+      model:
+        env.OLLAMA_MODEL,
     },
   };
 }
 
 /**
  * @typedef {Object} RagResponse
- * @property {string}   conversationId
- * @property {string}   websiteId
- * @property {string}   answer
- * @property {{ url: string, title: string, score: number }[]} sources
- * @property {'high'|'medium'|'low'|'none'} confidence
- * @property {object}   metadata
+ *
+ * @property {string}
+ * conversationId
+ *
+ * @property {string}
+ * websiteId
+ *
+ * @property {string}
+ * answer
+ *
+ * @property {Array}
+ * sources
+ *
+ * @property {
+ * 'high' |
+ * 'medium' |
+ * 'low' |
+ * 'none'
+ * }
+ * confidence
+ *
+ * @property {object}
+ * metadata
  */
