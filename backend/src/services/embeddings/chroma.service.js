@@ -578,6 +578,10 @@ export async function deleteEmbeddings(ids) {
   }
 }
 
+export async function deleteEmbeddingsByIds(ids) {
+  return deleteEmbeddings(ids);
+}
+
 /**
  * Delete every embedding belonging to one website.
  */
@@ -606,9 +610,13 @@ export async function deleteWebsiteEmbeddings(
     );
 
   } catch (err) {
-
-    logger.warn(
-      `ChromaDB deleteWebsiteEmbeddings failed: ${err.message}`
+    // Do not silently orphan vectors by deleting SQLite records when the
+    // vector cleanup did not succeed. The caller will keep the source intact
+    // and surface a retryable error instead.
+    throw createError(
+      ERROR_CODES.CHROMADB_ERROR,
+      `ChromaDB cleanup failed: ${err.response?.data?.error ?? err.response?.data?.message ?? err.message}`,
+      503
     );
   }
 }

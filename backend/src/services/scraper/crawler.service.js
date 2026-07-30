@@ -52,6 +52,7 @@ export async function crawlWebsite(seedUrl, opts = {}) {
   const skipRobots       = opts.skipRobotsCheck ?? false;
   const followLinks      = opts.followInternalLinks ?? true;
   const userId           = opts.userId ?? null;
+  const finalizeJob      = opts.finalizeJob ?? true;
   // Pre-created IDs from async controller (avoids duplicate record creation)
   const existingWebsiteId = opts._existingWebsiteId ?? null;
   const existingJobId     = opts._existingJobId     ?? null;
@@ -179,7 +180,6 @@ export async function crawlWebsite(seedUrl, opts = {}) {
     pagesScraped++;
     await scrapeJobService.incrementJobCounter(job.id, 'pages_crawled');
     await scrapeJobService.incrementJobCounter(job.id, 'pages_processed');
-    await websiteService.incrementWebsiteStats(website.id, { pages: 1 });
 
     // Update website title from the seed page
     if (pagesScraped === 1 && result.title) {
@@ -215,7 +215,9 @@ export async function crawlWebsite(seedUrl, opts = {}) {
     pages_found:    visited.size,
     current_page_url: null,
   });
-  await scrapeJobService.markJobCompleted(job.id);
+  const persistedPageCount = await pageService.countPagesByWebsite(website.id);
+  await websiteService.updateWebsite(website.id, { total_pages: persistedPageCount, error_message: null });
+  if (finalizeJob) await scrapeJobService.markJobCompleted(job.id);
 
   logger.info(`Crawl complete: ${normalizedSeed} — ${pagesScraped} pages, ${errorCount} errors`);
 

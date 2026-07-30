@@ -16,7 +16,7 @@
 
 import { chunkPage }               from './chunker.service.js';
 import { embedChunks, embedQuery, isEmbedModelAvailable } from './embedding.service.js';
-import { upsertEmbeddings, querySimilar, deleteWebsiteEmbeddings } from './chroma.service.js';
+import { upsertEmbeddings, querySimilar, deleteWebsiteEmbeddings, deleteEmbeddingsByIds } from './chroma.service.js';
 import * as chunkDbService          from '../database/chunk.service.js';
 import * as pageService             from '../database/page.service.js';
 import * as scrapeJobService        from '../database/scrapeJob.service.js';
@@ -87,8 +87,9 @@ export async function embedWebsite(websiteId, opts = {}) {
   // Update website total_chunks counter
   try {
     const totalNow = await chunkDbService.countChunksByWebsite(websiteId);
-    await websiteService.incrementWebsiteStats(websiteId, { chunks: 0 }); // touches updated_at
-    logger.info(`[Pipeline] websiteId=${websiteId} — total chunks in DB: ${totalNow}`);
+    const embeddedNow = await chunkDbService.countEmbeddedChunks(websiteId);
+    await websiteService.updateWebsite(websiteId, { total_chunks: totalNow });
+    logger.info(`[Pipeline] websiteId=${websiteId} — chunks stored=${totalNow}, embedded=${embeddedNow}`);
   } catch { /* non-fatal */ }
 
 
@@ -122,6 +123,11 @@ export async function embedPage(page, opts = {}) {
   logger.debug(`[Pipeline] Embedding page: ${page.url}`);
 
   // 1. Delete any existing chunks for this page (re-embed on update)
+  const oldChunks = await chunkDbService.getChunksByPage(page.id);
+  if (oldChunks.length) {
+    await deleteEmbeddingsByIds(oldChunks.map((chunk) => chunk.id));
+    logger.info(`[Pipeline] Re-index cleanup: removed ${oldChunks.length} old vectors for ${page.url}`);
+  }
   await chunkDbService.deleteChunksByPage(page.id);
 
   // 2. Chunk the page content
@@ -134,6 +140,7 @@ export async function embedPage(page, opts = {}) {
     logger.debug(`[Pipeline] No chunks produced for page: ${page.url}`);
     return { chunksCreated: 0, chunksEmbedded: 0 };
   }
+  logger.info('[Pipeline] Chunks created', { websiteId: page.website_id, pageUrl: page.url, count: chunks.length });
 
   // 3. Persist chunks to SQLite to get stable IDs
   const chunkIds = await chunkDbService.createChunks(
@@ -163,6 +170,7 @@ export async function embedPage(page, opts = {}) {
   }));
 
   await upsertEmbeddings(chromaItems);
+  logger.info('[Pipeline] Chunks stored in ChromaDB', { websiteId: page.website_id, pageUrl: page.url, count: chromaItems.length });
 
   // 6. Mark all chunks as embedded in SQLite
   await chunkDbService.markChunksEmbedded(chunkIds);

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getScrapeStatus, startScrape } from '../services/scrapeService';
+import { rescrapeWebsite } from '../services/websiteService';
 
 const POLL_INTERVAL_MS = 2000;
 const COMPLETION_MESSAGE_MS = 2000;
@@ -9,6 +10,7 @@ export function useScrape(onComplete) {
   const [isLoading, setIsLoading] = useState(false);
   const [status, setStatus] = useState(null);
   const [error, setError] = useState(null);
+  const [duplicateWebsiteId, setDuplicateWebsiteId] = useState(null);
   const pollRef = useRef(null);
   const completionTimeoutRef = useRef(null);
 
@@ -66,20 +68,40 @@ export function useScrape(onComplete) {
       const data = await startScrape(trimmedUrl);
       pollStatus(data.jobId, data.websiteId);
     } catch (requestError) {
-      setError(
-        requestError.message.includes('already been scraped')
-          ? 'This website is already scraped. Select it from the sidebar.'
-          : requestError.message,
-      );
+      if (requestError.status === 409 && requestError.payload?.error?.websiteId) {
+        setDuplicateWebsiteId(requestError.payload.error.websiteId);
+        setError(null);
+      } else setError(requestError.message);
       setIsLoading(false);
       setStatus(null);
     }
   }, [pollStatus, url]);
+
+  const confirmRescrape = useCallback(async () => {
+    if (!duplicateWebsiteId) return;
+    setIsLoading(true);
+    setError(null);
+    setStatus('Queueing re-scrape job…');
+    try {
+      const data = await rescrapeWebsite(duplicateWebsiteId);
+      setDuplicateWebsiteId(null);
+      pollStatus(data.jobId, data.websiteId);
+    } catch (requestError) {
+      setError(requestError.message);
+      setIsLoading(false);
+      setStatus(null);
+    }
+  }, [duplicateWebsiteId, pollStatus]);
+
+  const cancelRescrape = useCallback(() => {
+    setDuplicateWebsiteId(null);
+    setError(null);
+  }, []);
 
   useEffect(() => () => {
     clearPolling();
     clearCompletionTimeout();
   }, [clearCompletionTimeout, clearPolling]);
 
-  return { url, setUrl, isLoading, status, error, scrape };
+  return { url, setUrl, isLoading, status, error, scrape, duplicateWebsiteId, confirmRescrape, cancelRescrape };
 }

@@ -67,6 +67,7 @@ export async function scrapePage(rawUrl, opts = {}) {
   // 3. Fetch raw HTML
   const fetchResult = await fetchPage(url, { timeout: opts.timeout });
   const { html, finalUrl, statusCode, responseTimeMs } = fetchResult;
+  logger.info('[Scraper] HTTP response', { url, statusCode, finalUrl: finalUrl || url });
 
   // 4. Detect JS-heavy pages (heuristic — Phase 4 will handle these with Puppeteer)
   const isJsHeavy = looksJavaScriptHeavy(html);
@@ -80,7 +81,14 @@ export async function scrapePage(rawUrl, opts = {}) {
   // 6. Clean + validate body text
   let cleanedText, contentHash, wordCount;
   try {
-    ({ cleanedText, contentHash, wordCount } = cleanText(extracted.content, url));
+    const indexableText = [
+      extracted.title && `Title: ${extracted.title}`,
+      extracted.description && `Description: ${extracted.description}`,
+      extracted.headings?.length && `Headings: ${extracted.headings.map((heading) => heading.text).join(' | ')}`,
+      extracted.content,
+    ].filter(Boolean).join('\n\n');
+    ({ cleanedText, contentHash, wordCount } = cleanText(indexableText, url));
+    logger.info('[Scraper] Extracted text', { url, textLength: cleanedText.length, wordCount });
   } catch (err) {
     // If content is empty after cleaning, re-throw with original code
     throw err;

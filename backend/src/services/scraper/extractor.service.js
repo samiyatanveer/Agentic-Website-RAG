@@ -33,7 +33,8 @@ const NOISE_SELECTORS = [
   '[class*="cookie"]', '[id*="cookie"]',
   '[class*="gdpr"]', '[id*="gdpr"]',
   '[class*="consent"]', '[id*="consent"]',
-  '[class*="banner"]', '[id*="banner"]',
+  // Generic "banner" often contains a site's hero and primary copy. Keep it;
+  // the cookie/consent selectors above remove actual consent UI.
   '[aria-label*="cookie" i]',
 
   // Advertisements

@@ -5,7 +5,7 @@ import WebsiteList from '../components/WebsiteList';
 import { useWebsites } from '../hooks/useWebsites';
 
 export default function DashboardPage() {
-  const { websites, selectedWebsite, isLoading, error, refreshWebsites, setSelectedWebsite, selectScrapedWebsite } = useWebsites();
+  const { websites, selectedWebsite, isLoading, error, refreshWebsites, setSelectedWebsite, selectScrapedWebsite, removeWebsite } = useWebsites();
 
   return (
     <div className="dashboard">
@@ -15,7 +15,7 @@ export default function DashboardPage() {
         <div className="dashboard__sources">
           {isLoading && <div className="sidebar-loading"><Spinner size={18} /></div>}
           {!isLoading && error && <div className="sidebar-error" role="alert"><p>{error}</p><button type="button" className="btn btn-secondary" onClick={refreshWebsites}>Try again</button></div>}
-          {!isLoading && !error && <WebsiteList websites={websites} selectedId={selectedWebsite?.id} onSelect={setSelectedWebsite} />}
+          {!isLoading && !error && <WebsiteList websites={websites} selectedId={selectedWebsite?.id} onSelect={setSelectedWebsite} onDelete={removeWebsite} />}
         </div>
       </aside>
       <main className="dashboard__main">

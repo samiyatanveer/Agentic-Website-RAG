@@ -16,6 +16,9 @@ import {
 
 import * as conversationService from '../database/conversation.service.js';
 import * as messageService from '../database/message.service.js';
+import * as websiteService from '../database/website.service.js';
+import * as pageService from '../database/page.service.js';
+import * as chunkService from '../database/chunk.service.js';
 
 import { createError } from '../../utils/errorHandler.js';
 import { ERROR_CODES } from '../../config/constants.js';
@@ -58,6 +61,19 @@ export async function chat({
       messageLen: message.length,
     }
   );
+
+  const website = await websiteService.getWebsiteById(websiteId);
+  if (!website) {
+    throw createError(ERROR_CODES.NOT_FOUND, 'No scraped website is selected or it no longer exists.', 404);
+  }
+  const pages = await pageService.getPagesByWebsite(websiteId);
+  if (pages.length === 0) {
+    return unavailableResponse(websiteId, 'No content was extracted from this website yet.');
+  }
+  const storedChunks = await chunkService.getChunksByWebsite(websiteId);
+  if (storedChunks.length === 0) {
+    return unavailableResponse(websiteId, 'Content was scraped, but indexing has not completed or failed. Please re-scrape or re-index this website.');
+  }
 
   console.log('\n========== RAG CHAT START ==========');
 
@@ -188,9 +204,20 @@ export async function chat({
       '=========================================\n'
     );
 
-    // First retrieval attempt
-    results =
-      await searchSimilar(
+    const isContentDisplayRequest = /\b(show|display|give|list)\b.*\b(scraped (content|text)|content)\b|\b(summarize|summary)\b.*\b(scraped|content|website)\b/i.test(message);
+    if (isContentDisplayRequest) {
+      const pagesById = new Map(pages.map((page) => [page.id, page]));
+      results = storedChunks.slice(0, env.RAG_N_RESULTS ?? 5).map((chunk) => {
+        const page = pagesById.get(chunk.page_id);
+        return { id: chunk.id, text: chunk.chunk_text, score: 1, metadata: {
+          websiteId, pageId: chunk.page_id, pageUrl: page?.url ?? website.url,
+          pageTitle: page?.title ?? website.title ?? '', chunkIndex: chunk.chunk_index,
+        }};
+      });
+      logger.info('[RAG] Content-display request using stored chunks', { websiteId, chunksRetrieved: results.length });
+    } else {
+      // First retrieval attempt
+      results = await searchSimilar(
         message,
         {
           websiteId,
@@ -203,6 +230,7 @@ export async function chat({
             0.6,
         }
       );
+    }
 
     console.log(
       '[RAG] First retrieval completed.'
@@ -406,6 +434,7 @@ export async function chat({
     console.log(
       '[RAG] RAG prompt created.'
     );
+    logger.info('[RAG] Prompt context prepared', { websiteId, contextLength: built.contextUsed.length, promptLength: prompt.length });
   }
 
   // ─── 5. Generate answer with Ollama ───────────────────────────────────────
@@ -575,6 +604,18 @@ export async function chat({
       model:
         env.OLLAMA_MODEL,
     },
+  };
+}
+
+function unavailableResponse(websiteId, answer) {
+  logger.info('[RAG] Unavailable website content', { websiteId, answer });
+  return {
+    conversationId: null,
+    websiteId,
+    answer,
+    sources: [],
+    confidence: 'none',
+    metadata: { chunksRetrieved: 0, model: env.OLLAMA_MODEL },
   };
 }
 

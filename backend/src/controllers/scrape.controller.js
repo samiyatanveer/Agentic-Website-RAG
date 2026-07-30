@@ -153,8 +153,10 @@ async function crawlThenEmbed(url, websiteId, jobId, opts) {
       ...opts,
       _existingWebsiteId: websiteId,
       _existingJobId:     jobId,
+      finalizeJob:        false,
     });
     await runEmbeddings(websiteId, jobId);
+    await scrapeJobService.markJobCompleted(jobId);
   } catch (err) {
     logger.error('Background crawl+embed failed', { url, jobId, error: err.message });
     try {
@@ -166,13 +168,18 @@ async function crawlThenEmbed(url, websiteId, jobId, opts) {
 async function runEmbeddings(websiteId, jobId) {
   try {
     logger.info('[Embeddings] Starting for websiteId', { websiteId });
-    await embedWebsite(websiteId, { jobId });
+    const result = await embedWebsite(websiteId, { jobId });
+    if (result.chunksEmbedded === 0 && result.pagesProcessed > 0) {
+      throw createError(ERROR_CODES.CHROMADB_ERROR, 'No content was indexed for this scrape.', 500);
+    }
     logger.info('[Embeddings] Complete for websiteId', { websiteId });
   } catch (err) {
-    // Embedding failure is non-fatal for the scrape job; log and continue
-    logger.warn('[Embeddings] Failed (Ollama/ChromaDB may be offline)', {
+    // Do not report the job as complete when scraped pages could not be
+    // indexed; the pages remain saved and can be re-indexed later.
+    logger.warn('[Embeddings] Failed; scraped pages were preserved', {
       websiteId,
       error: err.message,
     });
+    throw err;
   }
 }

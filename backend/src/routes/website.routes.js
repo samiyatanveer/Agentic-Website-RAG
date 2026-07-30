@@ -13,6 +13,7 @@ import {
   listWebsites,
   getWebsite,
   reindexWebsite,
+  rescrapeWebsite,
   deleteWebsite,
 } from '../controllers/website.controller.js';
 
@@ -26,6 +27,7 @@ router.get('/', listWebsites);
 // Put /:id/reindex BEFORE /:id.
 // Otherwise Express may treat "reindex" as an ID in some route setups.
 router.post('/:id/reindex', reindexWebsite);
+router.post('/:id/rescrape', rescrapeWebsite);
 
 router.get('/:id', getWebsite);
 

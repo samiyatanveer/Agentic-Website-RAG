@@ -2,7 +2,7 @@ import { useScrape } from '../hooks/useScrape';
 import Spinner from './Spinner';
 
 export default function ScrapeForm({ onScraped }) {
-  const { url, setUrl, isLoading, status, error, scrape } = useScrape(onScraped);
+  const { url, setUrl, isLoading, status, error, scrape, duplicateWebsiteId, confirmRescrape, cancelRescrape } = useScrape(onScraped);
 
   return (
     <section className="scrape-form">
@@ -19,6 +19,7 @@ export default function ScrapeForm({ onScraped }) {
       </form>
       {status && <p className="form-feedback form-feedback--status" role="status">{status}</p>}
       {error && <p className="form-feedback form-feedback--error" role="alert">{error}</p>}
+      {duplicateWebsiteId && <div className="form-feedback form-feedback--status" role="dialog" aria-label="Re-scrape confirmation"><p>This website has already been scraped. Do you want to re-scrape it and refresh its content?</p><button type="button" className="btn btn-primary" onClick={confirmRescrape}>Re-scrape</button><button type="button" className="btn btn-secondary" onClick={cancelRescrape}>Cancel</button></div>}
     </section>
   );
 }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { getWebsites } from '../services/websiteService';
+import { deleteWebsite, getWebsites } from '../services/websiteService';
 
 export function useWebsites() {
   const [websites, setWebsites] = useState([]);
@@ -39,6 +39,12 @@ export function useWebsites() {
     if (scrapedWebsite) setSelectedWebsite(scrapedWebsite);
   }, [refreshWebsites]);
 
+  const removeWebsite = useCallback(async (websiteId) => {
+    await deleteWebsite(websiteId);
+    const nextWebsites = await refreshWebsites();
+    setSelectedWebsite((current) => current?.id === websiteId ? (nextWebsites[0] ?? null) : current);
+  }, [refreshWebsites]);
+
   return {
     websites,
     selectedWebsite,
@@ -47,5 +53,6 @@ export function useWebsites() {
     refreshWebsites,
     setSelectedWebsite,
     selectScrapedWebsite,
+    removeWebsite,
   };
 }

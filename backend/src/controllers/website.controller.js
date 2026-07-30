@@ -23,7 +23,9 @@ import * as scrapeJobService
 
 import {
   forceReindexWebsite,
+  removeWebsiteEmbeddings,
 } from '../services/embeddings/pipeline.service.js';
+import { crawlWebsite } from '../services/scraper/crawler.service.js';
 
 import logger
   from '../utils/logger.js';
@@ -265,6 +267,11 @@ export async function deleteWebsite(req, res) {
     const { id } =
       req.params;
 
+    // Remove vectors before SQLite's cascade removes the chunk IDs needed for
+    // cleanup. The Chroma filter is scoped to this website only.
+    await removeWebsiteEmbeddings(id);
+    logger.info('[Website] Delete cleanup complete', { websiteId: id });
+
     const deleted =
       await websiteService
         .deleteWebsite(
@@ -309,11 +316,47 @@ export async function deleteWebsite(req, res) {
   }
 }
 
+// POST /api/websites/:id/rescrape -- explicit refresh of an existing source.
+export async function rescrapeWebsite(req, res) {
+  try {
+    const { id } = req.params;
+    const website = await websiteService.getWebsiteById(id);
+    if (!website) {
+      return res.status(404).json({ success: false, error: { message: `Website not found: ${id}`, statusCode: 404 } });
+    }
+
+    const job = await scrapeJobService.createScrapeJob(id);
+    await scrapeJobService.markJobStarted(job.id);
+    res.status(202).json(createSuccessResponse({
+      message: 'Re-scrape job queued.', jobId: job.id, websiteId: id,
+      statusUrl: `/api/scrape/${job.id}/status`,
+    }));
+
+    // Existing pages remain in place until a successfully fetched replacement
+    // is available, preserving previously working content on partial failures.
+    crawlWebsite(website.url, {
+      _existingWebsiteId: id,
+      _existingJobId: job.id,
+      finalizeJob: false,
+    }).then(async () => {
+      await forceReindexWebsite(id);
+      await scrapeJobService.markJobCompleted(job.id);
+      logger.info('[Website] Re-scrape complete', { websiteId: id, jobId: job.id });
+    }).catch(async (error) => {
+      logger.warn('[Website] Re-scrape failed; preserved existing content', { websiteId: id, error: error.message });
+      await scrapeJobService.markJobFailed(job.id, error.message);
+    });
+  } catch (error) {
+    return res.status(error.statusCode || 500).json(handleError(error, 'website.controller.rescrapeWebsite'));
+  }
+}
+
 // ─── Exports ─────────────────────────────────────────────────────────────────
 
 export default {
   listWebsites,
   getWebsite,
   reindexWebsite,
+  rescrapeWebsite,
   deleteWebsite,
 };
