@@ -1,3 +1,13 @@
+---
+title: Agentic Website RAG Backend
+emoji: 🤖
+colorFrom: blue
+colorTo: purple
+sdk: docker
+pinned: false
+app_port: 7860
+---
+
 # Agentic Website RAG Chatbot
 
 A fully local, privacy-first AI chatbot that allows users to chat with any website content using an agentic scraping pipeline and Retrieval-Augmented Generation (RAG).
