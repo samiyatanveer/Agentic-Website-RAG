@@ -80,6 +80,6 @@ Before running the project, install:
 ## 1. Clone Repository
 
 ```bash
-git clone <repository-url>
+git clone <https://github.com/samiyatanveer/Agentic-Website-RAG/>
 
 cd agentic-website-rag-chatbot
